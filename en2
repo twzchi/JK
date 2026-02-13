@@ -120,15 +120,7 @@ plugins:
           #idle_timeout: 30
           enable_http3: true
           max_conns: 3          
-          
-        # - addr: "https://jk.ssmrzhongtao5224.workers.dev/0XsccHKD2N3N5ru+OF75aA"
-          # #dial_addr: "1.1.1.1"
-          # insecure_skip_verify: true
-          # socks5: "127.0.0.1:16427" 
-          # #idle_timeout: 30
-          # #enable_pipeline: true
-          # #enable_http3: true
-          # max_conns: 3          
+            
           
         # IPv6 可选
         - addr: "tcp://[2620:fe::9]"
