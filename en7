@@ -1,0 +1,284 @@
+#mosdns v5.3.4 dns-query
+log:
+  level: info
+  file: ""
+api:
+  http: "127.0.0.1:8081"
+
+plugins:
+  # 1. 优化缓存（启用懒缓存 + 增大容量）
+  - tag: "mem_cache"
+    type: "cache"
+    args:
+      size: 8192
+      lazy_cache_ttl: 259200          # 3天，显著提升缓存复用
+      dump_file: "./cache.db"
+      dump_interval: 300
+
+  # 2. 域名匹配器（保持原样，注意文件路径正确）
+  - tag: "query_is_local_domain"
+    type: "domain_set"
+    args:
+      files: #["./direct-list.txt"]
+        - ./direct-list.txt
+        #- ./geosite:cn        
+  - tag: "query_is_non_local_domain"
+    type: "domain_set"
+    args:
+      files: #["./proxy-list.txt"]
+        #- ./proxy-list.txt     
+        #- "D:/Game/mosdnsV5/geosite.dat:geolocation-!cn"
+        
+  - tag: "query_is_ad_domain"
+    type: "domain_set"
+    args:
+      files: #["./reject-list.txt"]
+        #- ./reject-list.txt     
+        - ./oisd_dbl_big.txt    
+        
+  - tag: "response_has_local_ip"
+    type: "ip_set"
+    args:
+      files: #["./cn.txt", "./myvpsip.txt"]
+        - ./cn.txt
+        #- ./geoip.dat:cn        
+        - ./myvpsip.txt
+        
+  # 3. 国内转发器（修正空格 + 优化参数）
+  - tag: "forward_local"           # ⚠️ 删除尾部空格！
+    type: "forward"
+    args:
+      concurrent: 3                  # 改为顺序查询，避免冗余
+     # fastest: true                   # 启用最快响应优选
+     # timeout: 3s
+      upstreams:
+        - addr: "tcp://119.29.29.29"
+          enable_pipeline: true
+          max_conns: 4
+        - addr: "tls://223.5.5.5"
+          enable_pipeline: true
+          max_conns: 4
+        - addr: "https://1.12.12.12/dns-query"
+          dial_addr: "182.254.116.116"
+          enable_pipeline: true
+          max_conns: 4
+        # IPv6 可选：若网络不支持建议注释掉
+        - addr: "2400:3200::1"
+          enable_pipeline: true
+          max_conns: 4
+
+  # 4. 国外转发器（统一 socks5 + 修正空格）
+  - tag: "forward_remote"           # ⚠️ 删除尾部空格！
+    type: "forward"
+    args:
+      concurrent: 3
+      #fastest: true
+      #timeout: 5s
+          # 统一配置，避免重复
+      #check_interval: 60s             # 健康检查
+      upstreams:
+        - addr: "https://[2001:4860:4860::8888]/dns-query" #https://8.8.4.4/dns-query##tcp://208.67.222.222
+          #dial_addr: "8.8.8.8"
+          #insecure_skip_verify: true
+          socks5: "127.0.0.1:16427" # 16427  17462
+          #enable_pipeline: true
+          #idle_timeout: 30
+          enable_http3: true
+          max_conns: 8
+          
+        - addr: "https://[2606:4700:4700::1111]/dns-query" #https://1.1.1.1/dns-query#https://208.67.220.220/dns-query#8.8.8.8
+          #dial_addr: "8.8.8.8"
+          #insecure_skip_verify: true
+          socks5: "127.0.0.1:16427" # 16427  17462
+          enable_pipeline: true
+          #idle_timeout: 30
+          #enable_http3: true
+          max_conns: 8          
+          
+        - addr: "https://8.8.8.8/dns-query" ##tcp://1.1.1.1 #https://doh-sg.blahdns.com/dns-query
+          #dial_addr: "1.1.1.1"
+          insecure_skip_verify: true
+          socks5: "127.0.0.1:17462" 
+          enable_pipeline: true
+          #idle_timeout: 30
+          #enable_http3: true
+          max_conns: 8
+          
+        - addr: "https://8.8.4.4/dns-query" ##tcp://1.1.1.1 #https://doh-sg.blahdns.com/dns-query
+          #dial_addr: "1.1.1.1"
+          #insecure_skip_verify: true
+          socks5: "127.0.0.1:17462" 
+          enable_pipeline: true
+          #idle_timeout: 30
+          #enable_http3: true
+          max_conns: 8          
+          
+        - addr: "https://1.1.1.1/dns-query" ## #https://doh-sg.blahdns.com/dns-query
+          #dial_addr: "1.1.1.1"
+          #insecure_skip_verify: true
+          socks5: "127.0.0.1:17462" 
+          enable_pipeline: true
+          #idle_timeout: 30
+          #enable_http3: true
+          max_conns: 8
+        - addr: "https://1.0.0.1/dns-query" ## #https://doh-sg.blahdns.com/dns-query
+          #dial_addr: "1.1.1.1"
+          #insecure_skip_verify: true
+          socks5: "127.0.0.1:17462" 
+          enable_pipeline: true
+          #idle_timeout: 30
+          #enable_http3: true
+          max_conns: 8             
+          
+        # - addr: "tcp://1.1.1.1" ## https://1.1.1.1/dns-query#https://doh-sg.blahdns.com/dns-query
+          # #dial_addr: "1.1.1.1"
+          # insecure_skip_verify: true
+          # socks5: "127.0.0.1:16427" 
+          # enable_pipeline: true
+          # #idle_timeout: 30
+          # enable_http3: true
+          # max_conns: 3          
+          
+        # - addr: "https://jk.ssmrzhongtao5224.workers.dev/0XsccHKD2N3N5ru+OF75aA"
+          # #dial_addr: "1.1.1.1"
+          # insecure_skip_verify: true
+          # socks5: "127.0.0.1:16427" 
+          # #idle_timeout: 30
+          # #enable_pipeline: true
+          # #enable_http3: true
+          # max_conns: 3          
+          
+        # # IPv6 可选
+        # - addr: "tcp://[2620:fe::9]"
+          # insecure_skip_verify: true
+          # socks5: "127.0.0.1:16427" 
+          # enable_pipeline: true
+          # #idle_timeout: 30
+          # max_conns: 3
+          
+  - tag: "ad_filter"
+    type: "sequence"
+    args:
+      - matches: "qname $query_is_ad_domain"
+        exec: reject 3 # 官方支持：reject 3返回NXDOMAIN，彻底屏蔽广告域名
+      #- matches: "cname $query_is_ad_domain"
+      #  exec: reject 3 # 过滤CNAME指向广告的记录 | 官方匹配语法兼容
+      
+  # fallback的primary服务器, 返回国内ip则accept, 返回非国内ip则drop
+  - tag: local_sequence
+    type: sequence
+    args:
+      - exec: $forward_local
+      - matches: resp_ip $response_has_local_ip
+        exec: drop_resp
+      - exec: accept
+
+  # fallback的secondary服务器, 返回非国内ip则添加至ipset, 返回国内ip只接受不会添加ipset
+  - tag: remote_sequence
+    type: sequence
+    args:
+      - exec: $forward_remote
+      - matches: "!resp_ip $response_has_local_ip"
+       # exec: ipset gfwlist,inet,32
+        exec: accept
+
+  # fallback sequence
+  - tag: "fallback1"
+    type: fallback
+    args:
+      primary: local_sequence
+      secondary: remote_sequence
+      threshold: 500
+      always_standby: true
+
+  # gfwlist解析出的ip添加至ipset，添加前先判断是否为国内ip或内网ip
+  - tag: "gfw-list1"
+    type: sequence
+    args:
+      - exec: ttl 300-3600
+      - matches: "!resp_ip $response_has_local_ip"
+        #exec: ipset gfwlist,inet,24
+        exec: accept
+  
+  # 5. 核心序列（✅ 修正为正确列表结构）
+  - tag: "main_sequence"
+    type: "sequence"
+    args:
+      # 缓存查询
+      - exec: $mem_cache
+      - matches: has_resp
+        exec: accept
+
+      # 第二步：广告过滤 | 提前拦截，减少无效查询
+      - exec: $ad_filter
+      - matches: has_resp
+        exec: accept
+        
+        # 广告拦截局域网，DDNS 
+      - matches: "qtype 12 65"
+        exec: reject 3 
+        
+        # 动态域名跳过缓存
+      - matches: "!qname 00006801.com"
+        exec: $mem_cache
+      - matches: has_resp
+        exec: accept
+
+      # 明确国外域名 → 代理
+      - matches: "qname $query_is_non_local_domain"
+        exec: $forward_remote
+      - matches: has_resp
+        exec: accept
+        
+      # 明确国内域名 → 直连
+      - matches: "qname $query_is_local_domain"
+        exec: $forward_local
+      - matches: has_resp
+        exec: jump gfw-list1 #accept
+
+      # 智能兜底：先查国内，若返回非国内IP则重试国外
+      - exec: $fallback1
+      # - exec: $forward_local
+      # - matches: "!resp_ip $response_has_local_ip"
+        # exec: $forward_remote
+      #- matches: has_resp
+      #  exec: accept     
+
+      
+
+  # 6. 服务入口
+  - tag: udp_server
+    type: "udp_server"
+    args:
+      entry: main_sequence
+      listen: 0.0.0.0:12347
+      
+  - tag: tcp_server
+    type: "tcp_server"
+    args:
+      entry: main_sequence
+      listen: 0.0.0.0:12347
+      idle_timeout: 10
+
+  # 可选：启用 DoH 服务（取消注释即可）
+  - tag: http_server
+    type: "http_server"
+    args:
+      entries:
+        - path: /dns-query
+       # - path: /0XsccHKD2N3N5ru+OF75aA
+          exec: main_sequence
+      src_ip_header: "X-Forwarded-For"    
+      listen: 0.0.0.0:443
+      cert: "./rootCA.crt" # 配置 cert 和 key 后会启用 TLS (DoT)。
+      key: "./client.key"
+      idle_timeout: 10
+      
+  # - tag: http_server2
+    # type: "http_server"
+    # args:
+      # entries:
+        # - path: /dns-query
+          # exec: main_sequence
+      # listen: 0.0.0.0:15432
+      # idle_timeout: 10      
