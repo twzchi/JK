@@ -126,13 +126,7 @@ plugins:
           #idle_timeout: 30
           #enable_http3: true
           max_conns: 4  
-        # - addr: "https://jk.ssmrzhongtao5224.workers.dev/0XsccHKD2N3N5ru+OF75aA"
-          # #dial_addr: "1.1.1.1"
-          # socks5: "127.0.0.1:16427" 
-          # #idle_timeout: 30
-          # #enable_pipeline: true
-          # #enable_http3: true
-          # max_conns: 4          
+       
         - addr: "udp://[2001:4860:4860::8888]" #https://8.8.4.4/dns-query#https://208.67.220.220/dns-query
           #dial_addr: "8.8.8.8"
           insecure_skip_verify: true
