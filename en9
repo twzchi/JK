@@ -1,4 +1,4 @@
-#mosdns v5.3.4 /dns-query
+#mosdns v5.3.4 /tcp
 log:
   level: info
   file: ""
